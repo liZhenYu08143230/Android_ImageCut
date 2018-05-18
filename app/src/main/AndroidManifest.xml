@@ -1,13 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    package="com.example.lzy01.sidemenu">
-    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"/>
+    package="com.example.lzy01.AndroidImageCut">
+
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
     <uses-permission android:name="android.permission.CAMERA" />
 
     <uses-feature android:name="android.hardware.camera.autofocus" />
     <uses-feature
         android:name="android.hardware.camera"
         android:required="true" />
+
     <application
         android:allowBackup="true"
         android:icon="@drawable/icon"
@@ -25,6 +27,8 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+        <activity android:name=".GrabCut" />
+        <activity android:name=".CannyActivity"></activity>
     </application>
 
 </manifest>

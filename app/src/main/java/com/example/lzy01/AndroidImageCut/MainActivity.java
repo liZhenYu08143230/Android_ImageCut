@@ -1,5 +1,6 @@
-package com.example.lzy01.sidemenu;
+package com.example.lzy01.AndroidImageCut;
 
+import android.app.Activity;
 import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
@@ -26,6 +27,7 @@ import android.widget.ImageView;
 import android.widget.Toast;
 
 import java.io.BufferedOutputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOError;
@@ -33,7 +35,7 @@ import java.io.IOException;
 import java.util.Date;
 
 public class MainActivity extends AppCompatActivity
-        implements NavigationView.OnNavigationItemSelectedListener,View.OnTouchListener {
+        implements NavigationView.OnNavigationItemSelectedListener {
 
 
     private static final int PHOTO_REQUEST=1;
@@ -44,13 +46,13 @@ public class MainActivity extends AppCompatActivity
 
     private ImageView showImg;
     private Bitmap srcBitmap;
-    private Bitmap cropBitmap;
-    private Canvas canvas;
-    private boolean isFristDraw =true;
-    private boolean isDown =false;
-    private  int startX=0, startY=0, endX=0, endY=0;
-    private int moveX=0,moveY=0;
 
+    private boolean isGrabCut=false;
+
+
+
+    private  Uri imageUri;
+    private static final String TAG = "MainActivity";
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -58,7 +60,7 @@ public class MainActivity extends AppCompatActivity
 
         //---------Mine Code-----------
         showImg=findViewById(R.id.showImg);
-        showImg.setOnTouchListener(this);
+
 
         //---------System Code----------DrawerLayout
         Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
@@ -75,39 +77,7 @@ public class MainActivity extends AppCompatActivity
 
     }
 
-    @Override
-    public boolean onTouch(View v, MotionEvent event) {
-        try{
-            switch (event.getAction()&MotionEvent.ACTION_MASK){
-                case MotionEvent.ACTION_DOWN:
-                        startX= (int) event.getX();
-                        startY=(int) event.getY();
-                        isDown=!isDown;
-                    break;
 
-                case MotionEvent.ACTION_UP:
-                    isDown=!isDown;
-                    endX= (int) event.getX();
-                    endY=(int) event.getY();
-                    drawRect(startX,startY,endX,endY);
-                    System.out.println("(startX,startY)=("+startX+","+startY+")");
-                    System.out.println("(endX,endY)=("+endX+","+endY+")");
-                    if(isFristDraw){
-                        isFristDraw =false;
-                    }
-                    break;
-
-                case MotionEvent.ACTION_MOVE:
-                    endX= (int) event.getX();
-                    endY=(int) event.getY();
-                    drawRect(startX,startY,endX,endY);
-                    break;
-            }
-        }catch (Exception e){
-            e.printStackTrace();
-        }
-        return true;
-    }
     @Override
     public void onBackPressed() {
         DrawerLayout drawer = (DrawerLayout) findViewById(R.id.drawer_layout);
@@ -151,22 +121,30 @@ public class MainActivity extends AppCompatActivity
 
         switch (id){
             case R.id.nav_camera:
+                Log.d(TAG, "onNavigationItemSelected: openCamera");
                 toCamera();
                 break;
             case R.id.nav_gallery:
+                Log.d(TAG, "onNavigationItemSelected:openGallery");
                 toGallery();
                 break;
             case R.id.nav_canny:
-                
+                Log.d(TAG, "onNavigationItemSelected:canny");
+                isGrabCut=false;
+                cutImage(isGrabCut);
                 break;
             case R.id.nav_grabCut:
-
+                Log.d(TAG, "onNavigationItemSelected:grabcut");
+                isGrabCut=true;
+                cutImage(isGrabCut);
                 break;
             case R.id.nav_save:
+                Log.d(TAG, "onNavigationItemSelected:save");
                 savePhoto();
                 break;
             case R.id.nav_share:
-
+                Log.d(TAG, "onNavigationItemSelected:share");
+                shareImg("Share","AppTheme","this is picture",imageUri);
                 break;
         }
 
@@ -174,6 +152,22 @@ public class MainActivity extends AppCompatActivity
         drawer.closeDrawer(GravityCompat.START);
         return true;
     }
+
+    private void cutImage(boolean isGrabCut) {
+        Bitmap bitmap=getBitmapFromImageView(showImg);
+        if(isGrabCut){
+            Intent grabCutIntent=new Intent(MainActivity.this,GrabCut.class);
+            grabCutIntent.putExtra("srcImage",Bitmap2Bytes(srcBitmap));
+            startActivity(grabCutIntent);
+            Log.d(TAG, "cutImage: grabcut");
+        }else{
+            Intent cannyIntent=new Intent(MainActivity.this,CannyActivity.class);
+            cannyIntent.putExtra("srcImage",Bitmap2Bytes(srcBitmap));
+            startActivity(cannyIntent);
+            Log.d(TAG, "cutImage: canny");
+        }
+    }
+
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
@@ -182,15 +176,11 @@ public class MainActivity extends AppCompatActivity
                 case PHOTO_REQUEST:
                     srcBitmap=loadBitmap(PICTURE_FILE.getPath());
                     showImg.setImageBitmap(srcBitmap);
-                    try{
-                        Toast.makeText(getApplicationContext(), "保存成功", Toast.LENGTH_LONG).show();
-                    }catch (IOError error){
-                        error.printStackTrace();
-                    }
-
+                    Log.d(TAG, "onActivityResult: getPictureFromcameraSuccessful");
                     break;
                 case FILE_REQUEST:
                     Uri uri = data.getData();
+                    imageUri=uri;
                     //通过uri的方式返回，部分手机uri可能为空
                     if (uri != null) {
                         try {
@@ -262,7 +252,7 @@ public class MainActivity extends AppCompatActivity
         if(!PICTURE_FILE.getParentFile().exists()){//文件夹不存在
             PICTURE_FILE.getParentFile().mkdirs();
         }
-        Uri imageUri = Uri.fromFile(PICTURE_FILE);
+        imageUri = Uri.fromFile(PICTURE_FILE);
         Intent intent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
         intent.putExtra(MediaStore.EXTRA_OUTPUT, imageUri);
         startActivityForResult(intent, PHOTO_REQUEST);//takePhotoRequestCode是自己定义的一个请求码
@@ -313,35 +303,30 @@ public class MainActivity extends AppCompatActivity
         imageView.setDrawingCacheEnabled(false);
         return obmp;
     }
-    private void drawRect(int x1,int y1,int x2,int y2){
-      showImg.setImageBitmap(srcBitmap);
-        Bitmap bitmap=getBitmapFromImageView(showImg);
-
-
-        int startX,startY,endX,endY;
-        startX=x1>x2?x2:x1;
-        startY=y1>y2?y2:y1;
-        endX=x1>x2?x1:x2;
-        endY=y1>y2?y1:y2;
-        int lengthRectX=endX-startX;
-        int lengthRectY=endY-startY;
-        Rect desRect=new Rect(0,0,lengthRectX,lengthRectY);
-        Rect srcRect=new Rect(startX,startY,endX,endY);
-
-
-        canvas=new Canvas(bitmap);
-        Paint paint=new Paint();
-        paint.setColor(Color.WHITE);
-        canvas.drawLine(x1,y1,x2,y1,paint);
-        canvas.drawLine(x1,y1,x1,y2,paint);
-        canvas.drawLine(x2,y1,x2,y2,paint);
-        canvas.drawLine(x1,y2,x2,y2,paint);
-        showImg.setImageBitmap(bitmap);
-        if(!isDown){
-            canvas.drawBitmap(bitmap,srcRect,desRect,null);
-            System.out.println("(lengthX,lengthY)=("+lengthRectX+","+lengthRectY+")");
-            cropBitmap=Bitmap.createBitmap(bitmap,0,0,lengthRectX,lengthRectY);
-            showImg.setImageBitmap(cropBitmap);
+    private void shareImg(String dlgTitle, String subject, String content, Uri uri) {
+        if (uri == null) {
+            return;
         }
+        Intent intent = new Intent(Intent.ACTION_SEND);
+        intent.setType("image/*");
+        intent.putExtra(Intent.EXTRA_STREAM, uri);
+        if (subject != null && !"".equals(subject)) {
+            intent.putExtra(Intent.EXTRA_SUBJECT, subject);
+        }
+        if (content != null && !"".equals(content)) {
+            intent.putExtra(Intent.EXTRA_TEXT, content);
+        }
+
+        // 设置弹出框标题
+        if (dlgTitle != null && !"".equals(dlgTitle)) { // 自定义标题
+            startActivity(Intent.createChooser(intent, dlgTitle));
+        } else { // 系统默认标题
+            startActivity(intent);
+        }
+    }
+    private byte[] Bitmap2Bytes(Bitmap bm){
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        bm.compress(Bitmap.CompressFormat.PNG, 100, baos);
+        return baos.toByteArray();
     }
 }

@@ -1,4 +1,4 @@
-package com.example.lzy01.sidemenu;
+package com.example.lzy01.AndroidImageCut;
 
 import org.junit.Test;
 

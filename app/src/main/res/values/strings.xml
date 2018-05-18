@@ -6,4 +6,11 @@
     <string name="nav_header_subtitle">android.lzy.gradProject@android.com</string>
     <string name="nav_header_desc">Navigation header</string>
     <string name="action_settings">Settings</string>
+    <string name="draw_rect">Draw a rect to select area you want cut</string>
+    <string name="do_grabCut">Draw some pixel you do not want and Click "GrabCut" to handle it</string>
+    <string name="next_step">下一步 </string>
+    <string name="pre_step">上一步</string>
+    <string name="Do_it">GrabCut</string>
+    <string name="finish">完成</string>
+    <string name="canny">Canny</string>
 </resources>
